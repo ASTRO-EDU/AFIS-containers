@@ -1,0 +1,3 @@
+rm -rf afiss_layer3_service.simg
+singularity build afiss_layer3_service.simg afiss_layer3_service.recipe
+

@@ -1,0 +1,2 @@
+rm -rf afiss_layer1_core.simg
+singularity build afiss_layer1_core.simg afiss_layer1_core.recipe

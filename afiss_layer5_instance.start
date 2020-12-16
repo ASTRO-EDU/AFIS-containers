@@ -1,0 +1,29 @@
+#!/bin/bash
+
+mkdir -p bind_dir
+mkdir -p bind_dir/lib_{mysql,munge,slurm} \
+         bind_dir/log_{mysqld,munge,slurm,httpd} \
+         bind_dir/run_{mysqld,munge,slurm,httpd} \
+         bind_dir/spool_{slurm,slurmd}
+
+chmod 0755 bind_dir/lib_munge bind_dir/log_munge bind_dir/run_munge
+chmod 0777 bind_dir/run_slurm
+
+
+singularity instance.start --bind bind_dir/lib_munge:/var/lib/munge \
+                  --bind bind_dir/lib_mysql:/var/lib/mysql \
+                  --bind bind_dir/lib_slurm:/var/lib/slurm \
+                  --bind bind_dir/log_mysqld:/var/log/mysqld \
+                  --bind bind_dir/log_munge:/var/log/munge \
+                  --bind bind_dir/log_slurm:/var/log/slurm \
+		  --bind bind_dir/log_httpd:/var/log/httpd \
+		  --bind bind_dir/run_httpd:/var/run/httpd \
+                  --bind bind_dir/run_munge:/var/run/munge \
+                  --bind bind_dir/run_mysqld:/var/run/mysqld \
+                  --bind bind_dir/run_slurm:/var/run/slurm \
+                  --bind bind_dir/spool_slurm:/var/spool/slurm \
+                  --bind bind_dir/spool_slurmd:/var/spool/slurmd \
+		  --bind /data01:/data01 \
+		   afiss_layer5_instance.simg \
+                   afiss_layer5
+

@@ -1,0 +1,167 @@
+BootStrap: localimage
+From: afiss_layer2_scitools.simg
+
+%labels
+  author "simotrone@gmail.com"
+  version "0.12"
+
+%setup
+ #commands are executed on the host system outside of the container after the base OS has been installed
+
+
+%files
+ #to copy files from your host system into the container
+ #Each line is a pair of <source> and <destination>, where the source is a path on your host system, and the destination is a path in the container.
+ #Files are copied before any %post or installation procedures
+ #layer3_conf/slurm_slurm.conf     /opt/conf/slurm_slurm.conf
+ #layer3_conf/slurm_slurmdbd.conf  /opt/conf/slurm_slurmdbd.conf
+ layer3_conf/my.cnf /opt/conf/my.cnf
+ layer3_conf/httpd.conf /opt/conf/httpd.conf
+ layer3_conf/mod_security.conf /opt/conf/mod_security.conf
+ layer3_conf/.htpasswd /opt/conf/.htpasswd
+ layer3_conf/php.ini /opt/conf/php.ini
+ layer3_conf/supergrawita_pw /opt/conf/supergrawita_pw
+
+
+%post
+  #yum -y install wget #crontabs
+  yum -y install deltarpm-3.6 net-tools-2.0 libaio-0.3.109 numactl-libs-2.0.12 # perl-Getopt-Long perl
+  # yum -y update
+  localedef -i en_US -f UTF-8 en_US.UTF-8
+
+  export MUNGEUSER=991
+  groupadd -g $MUNGEUSER munge
+  useradd  -m -c "MUNGE Uid 'N' Gid Emporium" -d /var/lib/munge -u $MUNGEUSER -g munge  -s /sbin/nologin munge
+  export SLURMUSER=992
+  groupadd -g $SLURMUSER slurm
+  useradd  -m -c "SLURM workload manager" -d /var/lib/slurm -u $SLURMUSER -g slurm  -s /bin/bash slurm
+
+  yum -y install epel-release
+  yum -y install munge-0.5.11 munge-libs-0.5.11 munge-devel-0.5.11
+
+  yum -y install rng-tools-6.3.1
+  rngd -r /dev/urandom
+
+  /usr/sbin/create-munge-key -r
+  dd if=/dev/urandom bs=1 count=1024 > /etc/munge/munge.key
+  chown -R munge: /etc/munge/ /var/log/munge/
+  chmod 0400 /etc/munge/munge.key
+  chmod 0700 /etc/munge/ /var/log/munge/
+
+  # install software distros
+  SRC_DIR="/usr/local/src"
+  test -d $SRC_DIR || mkdir -p $SRC_DIR
+
+  # mysqld
+  cd $SRC_DIR
+  MYSQL_RPMS="mysql-community-server-5.7.24-1.el7.x86_64.rpm
+              mysql-community-client-5.7.24-1.el7.x86_64.rpm
+              mysql-community-common-5.7.24-1.el7.x86_64.rpm
+              mysql-community-libs-5.7.24-1.el7.x86_64.rpm
+              mysql-community-devel-5.7.24-1.el7.x86_64.rpm"
+  for rpm_file in $MYSQL_RPMS; do
+    wget "https://dev.mysql.com/get/Downloads/MySQL-5.7/$rpm_file"
+  done
+  cat <<EOF >> $SRC_DIR/mysql_hash_md5
+6ef92158238cd2dd8a7b74f85c62490d  mysql-community-server-5.7.24-1.el7.x86_64.rpm
+8044968ba1cdce487baf7b2d5ec42629  mysql-community-devel-5.7.24-1.el7.x86_64.rpm
+daac5b7147949351aed38995c647194b  mysql-community-client-5.7.24-1.el7.x86_64.rpm
+5f10843255b1987acbc89a7d1c3a18af  mysql-community-common-5.7.24-1.el7.x86_64.rpm
+ba4058a9233d7a1d33b77283798dcdea  mysql-community-libs-5.7.24-1.el7.x86_64.rpm
+EOF
+
+  md5sum -c mysql_hash_md5
+  rpm -ivh $MYSQL_RPMS
+
+  sed -e '/^log-error=/ s/^/# /' \
+      -e '/log-error=/a log-error=/var/log/mysqld/mysqld.log' \
+      -i /etc/my.cnf
+
+
+  #INSTALL LAMP ENV
+  yum install -y httpd-2.4.6 php-5.4.16 php-pdo-5.4.16 mod_evasive-1.10.1 mod_security-2.9.2 phpMyAdmin-4.4.15.10 php-mcrypt-5.4.16 #openssh-clients
+  chown -R apache:apache /var/www
+  usermod -G users apache
+
+  # copy apache conf
+
+  mv /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.bkp
+  mv /opt/conf/httpd.conf /etc/httpd/conf/httpd.conf
+  mv /opt/conf/supergrawita_pw /etc/httpd/.supergrawita
+  mv /opt/conf/mod_security.conf /etc/httpd/conf.d/mod_security.conf
+  mv /opt/conf/.htpasswd /etc/httpd/.htpasswd
+  mv /opt/conf/php.ini /etc/php.ini
+
+
+  # start munge
+
+  yum -y install pam-devel-1.1.8 numactl-2.0.12 numactl-devel-2.0.12 hwloc-1.11.8 hwloc-devel-1.11.8 lua-devel-5.1.4 readline-devel-6.2 rrdtool-devel-1.4.8 man2html-1.6 infiniband-diags-2.1.0 libibumad-22.4 # openssl openssl-devel lua ncurses-devel libibmad
+  yum -y install rpm-build-4.11.3 #perl-ExtUtils-MakeMaker
+  yum -y groupinstall "Development Tools"
+
+  cd $SRC_DIR
+  wget https://download.schedmd.com/slurm/slurm-17.11.12.tar.bz2
+  echo "42f0a5dbe34210283f474328ac6e8d5267dc2386 slurm-17.11.12.tar.bz2" > slurm_hash_sha1
+  sha1sum -c slurm_hash_sha1
+  rpmbuild -ta slurm-17.11.12.tar.bz2
+  yum -y --nogpgcheck localinstall /root/rpmbuild/RPMS/x86_64/slurm-*rpm
+
+  # filesystem fix
+  mkdir -p /var/lib/{mysql,munge,slurm}
+  mkdir -p /var/log/{mysqld,munge,slurm}
+  mkdir -p /var/run/{mysqld,munge,slurm}
+  mkdir -p /var/spool/{slurm,slurmd}
+
+  chown slurm:slurm /var/{log,spool}/slurm
+  chmod 0755 /var/{lib,log,run}/munge
+  # change munge key permission so we can start it as normal user with munged -f
+  chmod 0755 /etc/munge/
+  chmod 0444 /etc/munge/munge.key
+
+  #cp /opt/conf/slurm_slurm.conf     /etc/slurm/slurm.conf
+  #cp /opt/conf/slurm_slurmdbd.conf  /etc/slurm/slurmdbd.conf
+  cp /opt/conf/my.cnf /etc/my.cnf
+
+  # #create link for cat2 website
+  # export AGILE=/opt/prod/agile-B25-r5-cat2-B5
+  # export DEEPVAR=$AGILE/DeepVar
+  # ln -s $DEEPVAR/website/cat2 /var/www/html/cat2
+  # ln -s $DEEPVAR/website/deepsearch1 /var/www/html/deepsearch1
+
+
+  # remove source
+  rm -rf $SRC_DIR
+
+# %startscript
+#   echo "checking service's dirs"
+#   EXIT=0
+#   DIRS="/var/lib/mysql /var/lib/munge /var/lib/slurm"
+#   DIRS="$DIRS /var/log/mysqld /var/log/munge /var/log/slurm"
+#   DIRS="$DIRS /var/run/mysqld /var/run/munge /var/run/slurm"
+#   DIRS="$DIRS /var/spool/slurm /var/spool/slurmd"
+#   for dir in $DIRS; do
+#     mkdir -p $dir
+#     touch $dir/write_test
+#     if [ ! -f $dir/write_test ]; then
+#       echo "$dir/ is not writable. Bind it to host directory."
+#       EXIT=1
+#     else
+#       rm -f $dir/write_test
+#     fi
+#   done
+#   [ $EXIT -ne 0 ] && exit 1
+#   # see singularity logs in /tmp
+#
+
+%help
+  To use this container you NEED /etc/slurm/slurm.conf
+
+  munged -f
+  mysqld --initialize --init-file=$HOME/slurm_init_db_server
+  mysqld --secure-file-priv=NULL &
+  export SLURM_CONF=slurm_slurm.conf
+  slurmctld
+  slurmd
+
+  ln -s /my/slurmdbd_config_file $HOME/slurmdbd.conf
+  slurmdbd
