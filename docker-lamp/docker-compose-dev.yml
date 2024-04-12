@@ -1,0 +1,12 @@
+services:
+
+  receiver:
+    image: rta_transient_kafka_receiver_sde:latest
+    volumes:
+      - ${KAFKA_RECEIVER_SRC_DIR}:/home/gamma/src
+    stdin_open: true
+    tty: true
+    command: bash
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
