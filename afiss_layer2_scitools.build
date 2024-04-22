@@ -1,2 +1,0 @@
-rm -rf afiss_layer2_scitools.simg
-singularity build afiss_layer2_scitools.simg afiss_layer2_scitools.recipe

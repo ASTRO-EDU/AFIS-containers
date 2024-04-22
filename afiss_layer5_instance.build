@@ -1,2 +1,0 @@
-rm -rf afiss_layer5_instance.simg
-singularity build afiss_layer5_instance.simg afiss_layer5_instance.recipe

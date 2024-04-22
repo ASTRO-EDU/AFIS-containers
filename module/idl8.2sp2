@@ -1,5 +1,0 @@
-export IDL_PATH=/opt/prod/idl8.2sp2/idl82
-export PATH=$IDL_PATH/bin:$PATH
-
-export EXELIS_DIR=$IDL_PATH
-export IDL_DIR=$IDL_PATH

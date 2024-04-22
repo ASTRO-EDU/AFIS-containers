@@ -1,2 +1,0 @@
-rm -rf afiss_layer1bis_idl.simg
-singularity build afiss_layer1bis_idl.simg afiss_layer1bis_idl.recipe
