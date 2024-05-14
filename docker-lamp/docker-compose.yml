@@ -1,28 +1,31 @@
 services:
 
   receiver:
-    image: rta_transient_kafka_receiver_prod:latest
+    image: afis_transient_kafka_receiver_prod:latest
     volumes:
-      - /home/castaldini/AFIS/rta-transient-receiver-kafka/config-test-host3.json:/etc/kafkareceiver/conf.d/config.json
+      - ${RECEIVER_CONFIG_FILE}:/etc/kafkareceiver/conf.d/config.json
     stdin_open: true
     tty: true
 
   gui:
-    image: afis:gui
+    image: afis_gui_prod:latest
     ports:
       - "38080:80"
-    volumes:
-      - ${AFISGUI_SRC_DIR}:/var/www/html/afisgui
-      - ./data/rta/data/:/var/www/html/reco_data
-      - ./data/rta/rtasci/ANALYSIS3:/var/www/html/analysis
+    # mount data points:
+    # volumes:
+      # - ./data/rta/data/:/var/www/html/reco_data
+      # - ./data/rta/rtasci/ANALYSIS3:/var/www/html/analysis
 
   mysql:
     image: mysql:8.4
     ports:
       - "${MYSQL_TCP_PORT}:3306"
     volumes:
-      - rta_afis_data:/var/lib/mysql
-      - ./mysql-8.4-conf:/etc/mysql/conf.d
+
+      - rta_afis_data:/var/lib/mysql ## docker volume
+      # - /path/to/rta_afis_data:/var/lib/mysql ## template to bind host volume
+
+      - ./mysql-8.4-conf:/etc/mysql/conf.d ## configuration for mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
 

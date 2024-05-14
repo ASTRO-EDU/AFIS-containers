@@ -1,12 +1,19 @@
 services:
 
   receiver:
-    image: rta_transient_kafka_receiver_sde:latest
+    image: afis_transient_kafka_receiver_sde:latest_${USER} ##boostrap this image ./bootstrap.sh <image_name> $USER
     volumes:
-      - ${KAFKA_RECEIVER_SRC_DIR}:/home/gamma/src
+      - ${AFISPIPE_SRC_DIR}:/home/gamma/src
     stdin_open: true
     tty: true
     command: bash
     environment:
       - MYSQL_HOST=mysql
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+
+      
+  gui:
+    image: afis_gui_base:latest
+    volumes:
+      - ${AFISGUI_SRC_DIR}:/var/www/html/afisgui
+
